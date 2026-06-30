@@ -78,6 +78,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          token: ${{ secrets.RELEASE_TOKEN }}
 
       - uses: actions/setup-python@v5
         with:
@@ -150,7 +151,7 @@ jobs:
 
       - name: Open and auto-merge release PR
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
           VERSION: ${{ steps.bump.outputs.version }}
         run: |
           gh pr create --base main --head "release/v${VERSION}" \
