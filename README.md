@@ -29,6 +29,10 @@ import dashobserve
 dashobserve.launch()   # Opens interactive UI in your Databricks notebook
 ```
 
+## What it looks like
+
+![DashObserve UI](https://raw.githubusercontent.com/dash-libs/dash-observe/main/docs/screenshots/launch.png)
+
 ## Python API
 
 ```python
