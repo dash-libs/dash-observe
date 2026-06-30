@@ -1,0 +1,26 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "dash-observe"
+dynamic = ["version"]
+description = "Data observability for Databricks — freshness, volume, and schema-change monitoring"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Darshan Shah", email = "darshan.innovation@icloud.com" }]
+keywords = ["databricks", "data-observability", "monitoring", "pyspark", "delta"]
+dependencies = ["ipywidgets>=8.0", "dash-uis>=0.1.0"]
+
+[project.optional-dependencies]
+dev = ["pytest", "pytest-cov", "hatch", "pdoc", "ruff", "pandas"]
+
+[project.urls]
+Homepage = "https://github.com/dash-libs/dash-observe"
+
+[tool.hatch.version]
+path = "dashobserve/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["dashobserve"]

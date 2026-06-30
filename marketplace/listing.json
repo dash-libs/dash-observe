@@ -1,0 +1,13 @@
+{
+  "listing_name": "DashObserve — Data Observability",
+  "pypi_package": "dash-observe",
+  "short_description": "Freshness, volume, and schema-change monitoring for Databricks tables — no external service to deploy.",
+  "long_description": "Part of the Dashlibs suite for Databricks. Provides an ipywidgets notebook UI plus a Python API for monitoring table freshness, row-count volume (including rolling baseline deviation), and schema changes, with results persisted to a Delta history table. Install with %pip install dash-observe and call dashobserve.launch() to open the interactive wizard.",
+  "categories": ["Data Engineering", "Developer Tools"],
+  "provider": "dash-libs",
+  "source_url": "https://github.com/dash-libs/dash-observe",
+  "documentation_url": "https://github.com/dash-libs/dash-observe/tree/main/docs/api",
+  "license": "Apache-2.0",
+  "supported_platforms": ["Databricks Runtime 12.x+"],
+  "install_instructions": "%pip install dash-observe"
+}
