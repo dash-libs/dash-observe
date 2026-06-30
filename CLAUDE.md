@@ -1,6 +1,8 @@
 # CLAUDE.md — dash-observe
 
-Part of the **Dashlibs** suite. See ~/dashlibs for the full context.
+Part of the **Dashlibs** suite. Full suite-wide context (release process
+gotchas, PR/review norms, repo list, rationale for past decisions):
+see `~/dashlibs/CLAUDE.md`.
 
 ## Purpose
 Data observability for Databricks — Monte Carlo-style monitoring without leaving the
@@ -24,12 +26,21 @@ history persistence (the Spark-touching glue).
   headers/source pickers/output panels locally
 - `launch()` is always the public entrypoint for business users
 
-## Out of scope for v1
-Distribution/anomaly monitoring (statistical drift) and lineage/alerting integration were
-deliberately deferred — freshness, volume, and schema-change cover the most common pipeline
-failure modes and are the fastest to ship correctly.
+## v1 scope vs. planned direction
+v1 deliberately covers only freshness, volume, and schema-change — the most common pipeline
+failure modes, fast to ship correctly with pure-Python, fully-tested check logic.
+
+**Explicitly requested next direction (not yet built):** go deep on Unity Catalog / Databricks
+SDK integration rather than staying with basic `spark.table()` calls — system tables,
+`information_schema`, table properties/tags, audit logs, and especially **lineage** (UC's
+native lineage APIs, possibly cross-referencing dash-relate's ontology). Be comprehensive here,
+not conservative — this was explicit user direction, not a "nice to have."
 
 ## CI
 - `ci.yml`    — PR gate: lint → test → build
 - `daily.yml` — 06:00 UTC: tests + .health/log.txt commit
-- `release.yml`— Monday 09:00 UTC: patch bump on a release branch → PR → auto-merge → GitHub release → PyPI
+- `release.yml`— Monday 09:00 UTC: patch bump on a release branch → PR → GitHub release → PyPI
+
+This repo has no branch protection configured yet, but the same norm applies regardless:
+**every change goes through a PR with real human review before merging — no exceptions.**
+Don't self-merge, don't push directly to `main`. Prefer small, targeted commits/PRs.
