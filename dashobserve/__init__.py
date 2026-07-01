@@ -7,7 +7,7 @@ from dashobserve.monitors import MonitorResult, check_freshness, check_schema, c
 from dashobserve.runner import MonitorConfig, MonitorReport, run_monitors
 from dashobserve.ui import launch
 
-__version__ = "0.1.1"
+__version__ = "0.1.2"
 __all__ = [
     "MonitorConfig",
     "MonitorReport",
