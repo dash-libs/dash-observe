@@ -145,11 +145,13 @@ jobs:
           # Clean up any orphaned tag/branch from a previous partial run
           git push origin --delete "refs/tags/v${VERSION}" 2>/dev/null || true
           git push origin --delete "release/v${VERSION}" 2>/dev/null || true
+          git tag -d "v${VERSION}" 2>/dev/null || true
           git checkout -b "release/v${VERSION}"
           git add .
           git commit -m "release: v${VERSION} — tests passed, docs updated"
           git tag "v${VERSION}"
-          git push origin "release/v${VERSION}" --tags
+          git push origin "release/v${VERSION}"
+          git push origin "v${VERSION}"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
