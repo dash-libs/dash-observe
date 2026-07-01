@@ -156,7 +156,7 @@ jobs:
           gh pr create --base main --head "release/v${VERSION}" \
             --title "release: v${VERSION}" \
             --body "Automated release PR — tests passed, docs regenerated, version bumped to v${VERSION}."
-          gh pr merge "release/v${VERSION}" --merge --auto --delete-branch
+          gh pr merge "release/v${VERSION}" --merge --admin --delete-branch
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2

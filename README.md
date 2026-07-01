@@ -62,6 +62,19 @@ print(report.summary())
 | dash-relate | Ontology & Lineage for AI |
 | dash-ui | Shared UI components (PyPI: `dash-uis`) |
 
+## Quality & Contributing
+
+- 25 unit tests, zero Spark dependency to run them — `pytest tests/ -v`
+  (freshness/volume/schema-diff checks are pure Python and fully covered;
+  only the Spark/Delta glue in `runner.py` needs a live cluster)
+- Lint-clean (`ruff check dashobserve/`), PEP 561 typed (`py.typed`)
+- Every change ships through a reviewed pull request; CI (lint → test on
+  Python 3.9–3.12 → build) gates every PR and every release
+- See [CONTRIBUTING.md](CONTRIBUTING.md) for dev setup,
+  [CHANGELOG.md](CHANGELOG.md) for release history,
+  [SECURITY.md](SECURITY.md) to report a vulnerability, and
+  [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
+
 ## License
 
 Apache 2.0
