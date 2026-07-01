@@ -5,15 +5,15 @@ gotchas, PR/review norms, repo list, rationale for past decisions):
 see `~/dashlibs/CLAUDE.md`.
 
 ## Purpose
-Data observability for Databricks — Monte Carlo-style monitoring without leaving the
-notebook. v1 covers freshness, volume, and schema-change monitoring. monitors.py=pure-logic
-check functions (no Spark, fully unit-testable), runner.py=MonitorConfig/run_monitors()/Delta
-history persistence (the Spark-touching glue).
+Notebook-native data observability for Databricks. Covers freshness, volume, schema-change
+monitoring, next-update prediction, and volume forecasting. monitors.py=pure-logic check and
+forecast functions (no Spark, fully unit-testable), runner.py=MonitorConfig/run_monitors()/
+ForecastReport/run_forecast()/Delta history persistence (the Spark-touching glue).
 
 ## Structure
 - `/ui.py`        — ipywidgets UI (built on `dashui`), `launch()` entrypoint
-- `/monitors.py`  — `check_freshness`, `check_volume`, `check_schema`/`diff_schema`, `MonitorResult`
-- `/runner.py`    — `MonitorConfig`, `MonitorReport`, `run_monitors()`
+- `/monitors.py`  — `check_freshness`, `check_volume`, `check_schema`/`diff_schema`, `predict_next_update`, `predict_volume`, `MonitorResult`
+- `/runner.py`    — `MonitorConfig`, `MonitorReport`, `run_monitors()`, `ForecastReport`, `run_forecast()`
 - `tests/`        — pytest, no Spark dependency for unit tests
 
 ## Key Design Rules
@@ -26,9 +26,9 @@ history persistence (the Spark-touching glue).
   headers/source pickers/output panels locally
 - `launch()` is always the public entrypoint for business users
 
-## v1 scope vs. planned direction
-v1 deliberately covers only freshness, volume, and schema-change — the most common pipeline
-failure modes, fast to ship correctly with pure-Python, fully-tested check logic.
+## Scope
+Covers freshness, volume, schema-change monitoring, plus next-update prediction and volume
+forecasting (both pure-Python, no Spark, fully unit-tested).
 
 **Explicitly requested next direction (not yet built):** go deep on Unity Catalog / Databricks
 SDK integration rather than staying with basic `spark.table()` calls — system tables,

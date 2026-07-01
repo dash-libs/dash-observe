@@ -16,3 +16,10 @@ def test_public_api_importable():
     assert MonitorConfig is not None
     assert MonitorReport is not None
     assert callable(run_monitors)
+
+
+def test_forecast_api_importable():
+    from dashobserve import ForecastReport, run_forecast, predict_next_update, predict_volume
+    assert callable(run_forecast)
+    assert callable(predict_next_update)
+    assert callable(predict_volume)

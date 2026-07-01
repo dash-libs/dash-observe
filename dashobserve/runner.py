@@ -8,7 +8,10 @@ import json
 from dataclasses import dataclass
 from datetime import datetime
 
-from dashobserve.monitors import MonitorResult, check_freshness, check_schema, check_volume
+from dashobserve.monitors import (
+    MonitorResult, check_freshness, check_schema, check_volume,
+    predict_next_update, predict_volume,
+)
 
 
 @dataclass
@@ -66,6 +69,7 @@ def run_monitors(config: MonitorConfig, history_table: str = None, spark=None) -
         results.append(MonitorResult(
             config.table, "freshness", "data_freshness",
             "PASS" if ok else "FAIL", msg, run_ts,
+            details=json.dumps({"latest_timestamp": latest.isoformat() if latest else None}),
         ))
 
     if config.min_rows is not None or config.max_rows is not None or config.volume_tolerance_pct is not None:
@@ -148,3 +152,103 @@ def _save_results(spark, history_table: str, results: list):
           .mode("append")
           .option("mergeSchema", "true")
           .saveAsTable(history_table))
+
+
+class ForecastReport:
+    def __init__(self, table: str, next_update: dict, volume_projections: list):
+        self.table = table
+        self.next_update = next_update
+        self.volume_projections = volume_projections
+
+    def summary(self) -> dict:
+        return {
+            "table": self.table,
+            "next_update_pattern": self.next_update["pattern"],
+            "predicted_next_update": self.next_update["predicted_next_update"],
+            "volume_periods_forecast": len(self.volume_projections),
+        }
+
+    def display(self):
+        print(f"📅 Next update prediction for {self.table}:")
+        if self.next_update["predicted_next_update"]:
+            print(f"   Pattern:         {self.next_update['pattern']}")
+            print(f"   Avg interval:    {self.next_update['avg_interval_hours']} hours")
+            print(f"   Last update:     {self.next_update['last_known_update']}")
+            print(f"   Predicted next:  {self.next_update['predicted_next_update']}")
+            print(f"   Based on:        {self.next_update['history_points']} observations")
+        else:
+            print("   Insufficient history — run monitors a few more times first")
+
+        if self.volume_projections:
+            print(f"\n📈 Volume forecast:")
+            print(f"   {'Period':<14} {'Date':<14} {'Projected rows':>14}   Range")
+            print(f"   {'-'*14} {'-'*14} {'-'*14}   {'-'*24}")
+            for p in self.volume_projections:
+                rng = f"{p['lower_bound']:,} – {p['upper_bound']:,}"
+                print(f"   {p['period_label']:<14} {p['predicted_date']:<14} {p['predicted_row_count']:>14,}   {rng}")
+        else:
+            print("\n📈 Volume forecast: insufficient history")
+
+
+def run_forecast(
+    table: str,
+    history_table: str,
+    n_periods: int = 4,
+    period: str = "weeks",
+    spark=None,
+) -> ForecastReport:
+    """
+    Read historical monitor results and produce next-update and volume forecasts.
+
+    Requires that run_monitors() has been called at least a few times with the
+    same history_table so there is enough data to fit a trend.
+    """
+    if spark is None:
+        from pyspark.sql import SparkSession
+        spark = SparkSession.getActiveSession()
+    from pyspark.sql import functions as F
+    from datetime import datetime
+
+    update_timestamps = []
+    try:
+        rows = (
+            spark.table(history_table)
+                 .filter((F.col("table_name") == table) & (F.col("monitor_type") == "freshness"))
+                 .orderBy("run_timestamp")
+                 .select("details")
+                 .collect()
+        )
+        for r in rows:
+            try:
+                ts_str = json.loads(r["details"]).get("latest_timestamp")
+                if ts_str:
+                    update_timestamps.append(datetime.fromisoformat(ts_str))
+            except Exception:
+                continue
+    except Exception:
+        pass
+
+    volume_history = []
+    try:
+        rows = (
+            spark.table(history_table)
+                 .filter((F.col("table_name") == table) & (F.col("monitor_type") == "volume"))
+                 .orderBy("run_timestamp")
+                 .select("run_timestamp", "details")
+                 .collect()
+        )
+        for r in rows:
+            try:
+                count = json.loads(r["details"]).get("row_count")
+                if count is not None:
+                    volume_history.append((r["run_timestamp"], count))
+            except Exception:
+                continue
+    except Exception:
+        pass
+
+    return ForecastReport(
+        table=table,
+        next_update=predict_next_update(update_timestamps),
+        volume_projections=predict_volume(volume_history, n_periods=n_periods, period=period),
+    )
