@@ -6,15 +6,15 @@
 
 Part of the **[Dashlibs](https://github.com/dash-libs)** suite — Databricks libraries built for business users.
 
-Monte Carlo-style data observability that runs natively in a Databricks notebook —
-no external service, no agent to deploy. v1 covers:
+Notebook-native data observability for Databricks — no external service, no agent to deploy.
 
 - **Freshness monitoring** — alert when a table's most recent timestamp value is older than expected
 - **Volume monitoring** — alert on row-count bounds, or on deviation from a rolling historical baseline
 - **Schema-change detection** — alert when columns are added, removed, or change type since the last run
+- **Next-update prediction** — estimate when a table will next be refreshed, based on its observed update cadence
+- **Volume forecasting** — project row counts over the next N days / weeks / months using a linear trend fitted to historical observations
 
-All monitor results are appended to a Delta history table, which also feeds the volume
-baseline and schema-diff comparisons for future runs.
+All monitor results are appended to a Delta history table, which feeds baselines, schema-diff comparisons, and the forecasting models for future runs.
 
 ## Installation
 
@@ -36,8 +36,9 @@ dashobserve.launch()   # Opens interactive UI in your Databricks notebook
 ## Python API
 
 ```python
-from dashobserve import MonitorConfig, run_monitors
+from dashobserve import MonitorConfig, run_monitors, run_forecast
 
+# Monitor
 cfg = MonitorConfig(
     table="catalog.schema.orders",
     freshness_column="updated_at", max_staleness_minutes=60,
@@ -47,6 +48,14 @@ cfg = MonitorConfig(
 report = run_monitors(cfg, history_table="catalog.schema.observe_history")
 report.display()
 print(report.summary())
+
+# Forecast (requires history built up from prior monitor runs)
+forecast = run_forecast(
+    table="catalog.schema.orders",
+    history_table="catalog.schema.observe_history",
+    n_periods=4, period="weeks",
+)
+forecast.display()
 ```
 
 ## Part of Dashlibs
@@ -64,7 +73,7 @@ print(report.summary())
 
 ## Quality & Contributing
 
-- 25 unit tests, zero Spark dependency to run them — `pytest tests/ -v`
+- 33 unit tests, zero Spark dependency to run them — `pytest tests/ -v`
   (freshness/volume/schema-diff checks are pure Python and fully covered;
   only the Spark/Delta glue in `runner.py` needs a live cluster)
 - Lint-clean (`ruff check dashobserve/`), PEP 561 typed (`py.typed`)

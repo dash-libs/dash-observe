@@ -94,6 +94,36 @@ def launch():
 
     run_btn.on_click(on_run)
 
+    # ── Forecast ─────────────────────────────────────────────────────────
+    f_table = w.Text(description="UC Table:", placeholder="catalog.schema.table")
+    f_history = w.Text(description="History table:", placeholder="catalog.schema.observe_history")
+    f_n_periods = w.IntText(description="Periods ahead:", value=4, min=1, max=52)
+    f_period = w.ToggleButtons(options=["days", "weeks", "months"], description="Period:")
+    forecast_btn = dashui.action_button("Run Forecast", style="info", emoji="📈")
+    forecast_output = dashui.output_panel()
+
+    def on_forecast(b):
+        with forecast_output:
+            forecast_output.clear_output()
+            table = f_table.value.strip()
+            hist = f_history.value.strip()
+            if not table or not hist:
+                print("⚠️  Specify both a UC table and the history table")
+                return
+            try:
+                from dashobserve.runner import run_forecast
+                report = run_forecast(
+                    table=table,
+                    history_table=hist,
+                    n_periods=f_n_periods.value,
+                    period=f_period.value,
+                )
+                report.display()
+            except Exception as e:
+                print(f"❌ {e}")
+
+    forecast_btn.on_click(on_forecast)
+
     ui = dashui.card([
         dashui.header("DashObserve — Data Observability", library="dashobserve", emoji="👁️"),
         dashui.section("Step 1: Configure a monitor"),
@@ -102,9 +132,19 @@ def launch():
         w.HBox([m_min_rows, m_max_rows, m_tolerance]),
         m_track_schema,
         add_btn, monitors_output,
-        dashui.section("Step 2: Run"),
+        dashui.section("Step 2: Run monitors"),
         history_table,
         run_btn,
         output,
+        dashui.section("Step 3: Forecast"),
+        dashui.html(
+            "<div style='font-size:12px;color:#666;margin-bottom:4px'>"
+            "Predicts next table update and projects volume trend. "
+            "Requires history built from prior monitor runs.</div>"
+        ),
+        w.HBox([f_table, f_history]),
+        w.HBox([f_n_periods, f_period]),
+        forecast_btn,
+        forecast_output,
     ])
     display(ui)
