@@ -1,6 +1,24 @@
 """DashObserve interactive UI for Databricks notebooks."""
 from __future__ import annotations
 
+_LIBRARY = "dashobserve"
+
+
+def env_setup() -> None:
+    """Open the environment setup panel — where should dashobserve read/write
+    its configs? Defaults to the notebook's current working directory if
+    never called."""
+    try:
+        import dashui
+        from IPython.display import display
+    except ImportError:
+        raise RuntimeError("ipywidgets required. Run: %pip install ipywidgets") from None
+
+    display(dashui.card([
+        dashui.header("DashObserve — Environment Setup", library=_LIBRARY),
+        dashui.env_setup_panel(_LIBRARY).widget,
+    ]))
+
 
 def launch():
     try:
@@ -11,7 +29,8 @@ def launch():
 
     import dashui
 
-    monitors: list[dict] = []
+    saved = dashui.load_config(_LIBRARY, defaults={"monitors": [], "history_table": ""})
+    monitors: list[dict] = list(saved["monitors"])
 
     # ── Add monitor ───────────────────────────────────────────────────────
     m_table = w.Text(description="UC Table:", placeholder="catalog.schema.table")
@@ -43,6 +62,12 @@ def launch():
         text = text.strip()
         return float(text) if text else None
 
+    def _save_state() -> None:
+        try:
+            dashui.save_config(_LIBRARY, {"monitors": monitors, "history_table": history_table.value.strip()})
+        except Exception:
+            pass  # persistence is a convenience, never block the actual operation on it
+
     def on_add(b):
         table = m_table.value.strip()
         if not table:
@@ -58,11 +83,13 @@ def launch():
         })
         render_monitors(monitors)
         m_table.value = m_freshness_col.value = m_min_rows.value = m_max_rows.value = m_tolerance.value = ""
+        _save_state()
 
     add_btn.on_click(on_add)
+    render_monitors(monitors)  # show any monitors restored from a previous session
 
     # ── Run ──────────────────────────────────────────────────────────────
-    history_table = w.Text(description="History table:", placeholder="catalog.schema.observe_history (optional)")
+    history_table = w.Text(description="History table:", placeholder="catalog.schema.observe_history (optional)", value=saved["history_table"])
     run_btn = dashui.action_button("Run All Monitors", style="success")
     output = dashui.output_panel()
 
@@ -72,6 +99,7 @@ def launch():
             if not monitors:
                 print("No monitors configured — add at least one above")
                 return
+            _save_state()
             try:
                 from dashobserve.runner import MonitorConfig, run_monitors
                 hist = history_table.value.strip() or None
@@ -124,8 +152,13 @@ def launch():
 
     forecast_btn.on_click(on_forecast)
 
+    env_accordion = w.Accordion(children=[dashui.env_setup_panel(_LIBRARY).widget])
+    env_accordion.set_title(0, "Environment setup")
+    env_accordion.selected_index = None
+
     ui = dashui.card([
         dashui.header("DashObserve — Data Observability", library="dashobserve"),
+        env_accordion,
         dashui.section("Step 1: Configure a monitor"),
         m_table,
         w.HBox([m_freshness_col, m_max_staleness]),
