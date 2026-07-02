@@ -8,7 +8,7 @@ from dashobserve.monitors import (
     predict_next_update, predict_volume,
 )
 from dashobserve.runner import MonitorConfig, MonitorReport, run_monitors, ForecastReport, run_forecast
-from dashobserve.ui import launch
+from dashobserve.ui import env_setup, launch
 
 __version__ = "0.1.5"
 __all__ = [
@@ -24,5 +24,6 @@ __all__ = [
     "diff_schema",
     "predict_next_update",
     "predict_volume",
+    "env_setup",
     "launch",
 ]

@@ -27,7 +27,7 @@ classifiers = [
     "Topic :: Software Development :: Libraries",
     "Typing :: Typed",
 ]
-dependencies = ["ipywidgets>=8.0", "dash-uis==0.2.3"]
+dependencies = ["ipywidgets>=8.0", "dash-uis==0.3.1"]
 
 [project.optional-dependencies]
 dev = ["pytest", "pytest-cov", "hatch", "pdoc", "ruff", "pandas"]
