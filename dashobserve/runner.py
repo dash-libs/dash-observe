@@ -48,8 +48,7 @@ class MonitorReport:
 
     def display(self):
         for r in self.results:
-            icon = "✅" if r.status == "PASS" else "❌"
-            print(f"{icon} [{r.monitor_type}] {r.table_name} — {r.message}")
+            print(f"[{r.status}] [{r.monitor_type}] {r.table_name} — {r.message}")
 
 
 def run_monitors(config: MonitorConfig, history_table: str = None, spark=None) -> MonitorReport:
@@ -180,14 +179,14 @@ class ForecastReport:
             print("   Insufficient history — run monitors a few more times first")
 
         if self.volume_projections:
-            print("\n📈 Volume forecast:")
+            print("\nVolume forecast:")
             print(f"   {'Period':<14} {'Date':<14} {'Projected rows':>14}   Range")
             print(f"   {'-'*14} {'-'*14} {'-'*14}   {'-'*24}")
             for p in self.volume_projections:
                 rng = f"{p['lower_bound']:,} – {p['upper_bound']:,}"
                 print(f"   {p['period_label']:<14} {p['predicted_date']:<14} {p['predicted_row_count']:>14,}   {rng}")
         else:
-            print("\n📈 Volume forecast: insufficient history")
+            print("\nVolume forecast: insufficient history")
 
 
 def run_forecast(

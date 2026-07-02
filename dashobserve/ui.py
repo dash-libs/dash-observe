@@ -25,7 +25,7 @@ def launch():
 
     m_track_schema = w.Checkbox(value=True, description="Track schema changes")
 
-    add_btn = dashui.action_button("Add Monitor", style="info", emoji="＋")
+    add_btn = dashui.action_button("Add Monitor", style="info")
     monitors_output, render_monitors = dashui.running_list(
         lambda i, m: (
             f"  {i}. {m['table']} — "
@@ -63,14 +63,14 @@ def launch():
 
     # ── Run ──────────────────────────────────────────────────────────────
     history_table = w.Text(description="History table:", placeholder="catalog.schema.observe_history (optional)")
-    run_btn = dashui.action_button("Run All Monitors", style="success", emoji="▶")
+    run_btn = dashui.action_button("Run All Monitors", style="success")
     output = dashui.output_panel()
 
     def on_run(b):
         with output:
             output.clear_output()
             if not monitors:
-                print("⚠️  No monitors configured — add at least one above")
+                print("No monitors configured — add at least one above")
                 return
             try:
                 from dashobserve.runner import MonitorConfig, run_monitors
@@ -90,7 +90,7 @@ def launch():
                     s = report.summary()
                     print(f"   → {s['passed']}/{s['total_monitors']} passed\n")
             except Exception as e:
-                print(f"❌ {e}")
+                print(f"Error: {e}")
 
     run_btn.on_click(on_run)
 
@@ -99,7 +99,7 @@ def launch():
     f_history = w.Text(description="History table:", placeholder="catalog.schema.observe_history")
     f_n_periods = w.IntText(description="Periods ahead:", value=4, min=1, max=52)
     f_period = w.ToggleButtons(options=["days", "weeks", "months"], description="Period:")
-    forecast_btn = dashui.action_button("Run Forecast", style="info", emoji="📈")
+    forecast_btn = dashui.action_button("Run Forecast", style="info")
     forecast_output = dashui.output_panel()
 
     def on_forecast(b):
@@ -108,7 +108,7 @@ def launch():
             table = f_table.value.strip()
             hist = f_history.value.strip()
             if not table or not hist:
-                print("⚠️  Specify both a UC table and the history table")
+                print("Specify both a UC table and the history table")
                 return
             try:
                 from dashobserve.runner import run_forecast
@@ -120,12 +120,12 @@ def launch():
                 )
                 report.display()
             except Exception as e:
-                print(f"❌ {e}")
+                print(f"Error: {e}")
 
     forecast_btn.on_click(on_forecast)
 
     ui = dashui.card([
-        dashui.header("DashObserve — Data Observability", library="dashobserve", emoji="👁️"),
+        dashui.header("DashObserve — Data Observability", library="dashobserve"),
         dashui.section("Step 1: Configure a monitor"),
         m_table,
         w.HBox([m_freshness_col, m_max_staleness]),
