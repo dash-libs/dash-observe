@@ -180,7 +180,7 @@ class ForecastReport:
             print("   Insufficient history — run monitors a few more times first")
 
         if self.volume_projections:
-            print(f"\n📈 Volume forecast:")
+            print("\n📈 Volume forecast:")
             print(f"   {'Period':<14} {'Date':<14} {'Projected rows':>14}   Range")
             print(f"   {'-'*14} {'-'*14} {'-'*14}   {'-'*24}")
             for p in self.volume_projections:
