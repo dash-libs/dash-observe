@@ -10,7 +10,7 @@ from dashobserve.monitors import (
 from dashobserve.runner import MonitorConfig, MonitorReport, run_monitors, ForecastReport, run_forecast
 from dashobserve.ui import env_setup, launch
 
-__version__ = "0.1.6"
+__version__ = "0.1.7"
 __all__ = [
     "MonitorConfig",
     "MonitorReport",
