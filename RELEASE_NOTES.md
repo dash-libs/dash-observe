@@ -1,7 +1,7 @@
-## DashObserve v0.1.7
+## DashObserve v0.1.8
 
-**Released:** 2026-07-13
-**Previous:** v0.1.6
+**Released:** 2026-07-20
+**Previous:** v0.1.7
 
 
 
@@ -12,12 +12,12 @@
 
 ### Install
 ```bash
-pip install dash-observe==0.1.7
+pip install dash-observe==0.1.8
 ```
 
 ### Quick Start (Databricks notebook)
 ```python
-%pip install dash-observe==0.1.7
+%pip install dash-observe==0.1.8
 import dashobserve
 dashobserve.launch()
 ```
