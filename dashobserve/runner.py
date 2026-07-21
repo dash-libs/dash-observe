@@ -62,13 +62,25 @@ def run_monitors(config: MonitorConfig, history_table: str = None, spark=None) -
     run_ts = datetime.now().isoformat(timespec="seconds")
     results = []
 
-    if config.freshness_column and config.max_staleness_minutes is not None:
-        latest = df.agg(F.max(config.freshness_column)).collect()[0][0]
+    if config.max_staleness_minutes is not None:
+        if config.freshness_column:
+            latest = df.agg(F.max(config.freshness_column)).collect()[0][0]
+            source = "column"
+        else:
+            # No timestamp column needed — Delta table metadata already
+            # tracks when the table was last written.
+            latest = _table_last_modified(spark, config.table)
+            source = "metadata"
         ok, msg = check_freshness(latest, config.max_staleness_minutes)
+        if source == "metadata":
+            msg += " (via Delta table metadata)"
         results.append(MonitorResult(
             config.table, "freshness", "data_freshness",
             "PASS" if ok else "FAIL", msg, run_ts,
-            details=json.dumps({"latest_timestamp": latest.isoformat() if latest else None}),
+            details=json.dumps({
+                "latest_timestamp": latest.isoformat() if latest else None,
+                "source": source,
+            }),
         ))
 
     if config.min_rows is not None or config.max_rows is not None or config.volume_tolerance_pct is not None:
@@ -97,6 +109,30 @@ def run_monitors(config: MonitorConfig, history_table: str = None, spark=None) -
         _save_results(spark, history_table, results)
 
     return MonitorReport(results)
+
+
+def _table_last_modified(spark, table: str):
+    """The Delta table's lastModified timestamp — metadata only, no scan."""
+    try:
+        return spark.sql(f"DESCRIBE DETAIL {table}").collect()[0]["lastModified"]
+    except Exception:
+        return None
+
+
+def discover_tables(schema_scope: str, spark=None) -> list[str]:
+    """List every table in a 'catalog.schema' via information_schema — for
+    bulk-adding monitors across a whole schema instead of one table at a time."""
+    catalog, sep, schema_name = schema_scope.partition(".")
+    if not sep:
+        raise ValueError(f"schema_scope must be 'catalog.schema', got {schema_scope!r}")
+    if spark is None:
+        from pyspark.sql import SparkSession
+        spark = SparkSession.getActiveSession()
+    rows = spark.sql(
+        f"SELECT table_name FROM {catalog}.information_schema.tables "
+        f"WHERE table_schema = '{schema_name}' ORDER BY table_name"
+    ).collect()
+    return [f"{catalog}.{schema_name}.{r['table_name']}" for r in rows]
 
 
 def _read_volume_baseline(spark, history_table: str, table: str, window: int = 7):
@@ -168,7 +204,7 @@ class ForecastReport:
         }
 
     def display(self):
-        print(f"📅 Next update prediction for {self.table}:")
+        print(f"Next update prediction for {self.table}:")
         if self.next_update["predicted_next_update"]:
             print(f"   Pattern:         {self.next_update['pattern']}")
             print(f"   Avg interval:    {self.next_update['avg_interval_hours']} hours")

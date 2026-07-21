@@ -7,7 +7,7 @@ from dashobserve.monitors import (
     MonitorResult, check_freshness, check_schema, check_volume, diff_schema,
     predict_next_update, predict_volume,
 )
-from dashobserve.runner import MonitorConfig, MonitorReport, run_monitors, ForecastReport, run_forecast
+from dashobserve.runner import MonitorConfig, MonitorReport, run_monitors, ForecastReport, run_forecast, discover_tables
 from dashobserve.ui import env_setup, launch
 
 __version__ = "0.1.8"
@@ -16,6 +16,7 @@ __all__ = [
     "MonitorReport",
     "MonitorResult",
     "ForecastReport",
+    "discover_tables",
     "run_monitors",
     "run_forecast",
     "check_freshness",

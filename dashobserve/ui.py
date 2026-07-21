@@ -35,7 +35,11 @@ def launch():
     # ── Add monitor ───────────────────────────────────────────────────────
     m_table = w.Text(description="UC Table:", placeholder="catalog.schema.table")
 
-    m_freshness_col = w.Text(description="Freshness col:", placeholder="updated_at (optional)")
+    m_track_freshness = w.Checkbox(value=False, description="Track freshness")
+    m_freshness_col = w.Text(
+        description="Freshness col:",
+        placeholder="updated_at — leave blank to use Delta table metadata instead",
+    )
     m_max_staleness = w.IntText(description="Max staleness (min):", value=1440)
 
     m_min_rows = w.Text(description="Min rows:", placeholder="optional")
@@ -45,14 +49,15 @@ def launch():
     m_track_schema = w.Checkbox(value=True, description="Track schema changes")
 
     add_btn = dashui.action_button("Add Monitor", style="info")
-    monitors_output, render_monitors = dashui.running_list(
-        lambda i, m: (
-            f"  {i}. {m['table']} — "
-            f"freshness:{'on' if m['freshness_column'] else 'off'}, "
-            f"volume:{'on' if (m['min_rows'] or m['max_rows'] or m['volume_tolerance_pct']) else 'off'}, "
-            f"schema:{'on' if m['track_schema'] else 'off'}"
-        )
-    )
+
+    def _monitor_label(i, m):
+        freshness = "off"
+        if m["max_staleness_minutes"] is not None:
+            freshness = f"on ({m['freshness_column'] or 'metadata'})"
+        volume = "on" if (m["min_rows"] or m["max_rows"] or m["volume_tolerance_pct"]) else "off"
+        return f"{i}. {m['table']} — freshness:{freshness}, volume:{volume}, schema:{'on' if m['track_schema'] else 'off'}"
+
+    monitors_list = dashui.item_list(_monitor_label, empty_text="No monitors configured yet.")
 
     def _parse_int(text):
         text = text.strip()
@@ -68,25 +73,69 @@ def launch():
         except Exception:
             pass  # persistence is a convenience, never block the actual operation on it
 
-    def on_add(b):
-        table = m_table.value.strip()
-        if not table:
-            return
+    def _render_monitors():
+        monitors_list.render(monitors, on_change=lambda _items: _save_state())
+
+    def _add_monitor(table: str):
         monitors.append({
             "table": table,
             "freshness_column": m_freshness_col.value.strip() or None,
-            "max_staleness_minutes": m_max_staleness.value,
+            "max_staleness_minutes": m_max_staleness.value if m_track_freshness.value else None,
             "min_rows": _parse_int(m_min_rows.value),
             "max_rows": _parse_int(m_max_rows.value),
             "volume_tolerance_pct": _parse_float(m_tolerance.value),
             "track_schema": m_track_schema.value,
         })
-        render_monitors(monitors)
+
+    def on_add(b):
+        table = m_table.value.strip()
+        if not table:
+            return
+        _add_monitor(table)
+        _render_monitors()
         m_table.value = m_freshness_col.value = m_min_rows.value = m_max_rows.value = m_tolerance.value = ""
         _save_state()
 
     add_btn.on_click(on_add)
-    render_monitors(monitors)  # show any monitors restored from a previous session
+    _render_monitors()  # show any monitors restored from a previous session
+
+    # ── Bulk-add from schema discovery ──────────────────────────────────────
+    discover_schema = w.Text(description="Schema:", placeholder="catalog.schema")
+    discover_btn = dashui.action_button("Discover Tables", style="info")
+    discovered_select = w.SelectMultiple(options=[], description="Found:", layout=w.Layout(width="100%", height="120px"))
+    add_selected_btn = dashui.action_button("Add Selected", style="success")
+    discover_output = dashui.output_panel()
+
+    def on_discover(b):
+        with discover_output:
+            discover_output.clear_output()
+            scope = discover_schema.value.strip()
+            if not scope:
+                print("Enter a catalog.schema first")
+                return
+            discover_btn.set_label("Discovering…")
+            discover_btn.set_disabled(True)
+            try:
+                from dashobserve.runner import discover_tables
+                found = discover_tables(scope)
+                discovered_select.options = found
+                print(f"Found {len(found)} table(s) — select the ones to monitor, using the settings above")
+            except Exception as e:
+                print(f"Error: {e}")
+            finally:
+                discover_btn.set_label("Discover Tables")
+                discover_btn.set_disabled(False)
+
+    def on_add_selected(b):
+        with discover_output:
+            for table in discovered_select.value:
+                _add_monitor(table)
+            _render_monitors()
+            _save_state()
+            print(f"Added {len(discovered_select.value)} monitor(s)")
+
+    discover_btn.on_click(on_discover)
+    add_selected_btn.on_click(on_add_selected)
 
     # ── Run ──────────────────────────────────────────────────────────────
     history_table = w.Text(description="History table:", placeholder="catalog.schema.observe_history (optional)", value=saved["history_table"])
@@ -100,6 +149,8 @@ def launch():
                 print("No monitors configured — add at least one above")
                 return
             _save_state()
+            run_btn.set_label("Running…")
+            run_btn.set_disabled(True)
             try:
                 from dashobserve.runner import MonitorConfig, run_monitors
                 hist = history_table.value.strip() or None
@@ -107,7 +158,7 @@ def launch():
                     cfg = MonitorConfig(
                         table=m["table"],
                         freshness_column=m["freshness_column"],
-                        max_staleness_minutes=m["max_staleness_minutes"] if m["freshness_column"] else None,
+                        max_staleness_minutes=m["max_staleness_minutes"],
                         min_rows=m["min_rows"],
                         max_rows=m["max_rows"],
                         volume_tolerance_pct=m["volume_tolerance_pct"],
@@ -119,6 +170,9 @@ def launch():
                     print(f"   → {s['passed']}/{s['total_monitors']} passed\n")
             except Exception as e:
                 print(f"Error: {e}")
+            finally:
+                run_btn.set_label("Run All Monitors")
+                run_btn.set_disabled(False)
 
     run_btn.on_click(on_run)
 
@@ -161,10 +215,18 @@ def launch():
         env_accordion,
         dashui.section("Step 1: Configure a monitor"),
         m_table,
-        w.HBox([m_freshness_col, m_max_staleness]),
+        w.HBox([m_track_freshness, m_max_staleness]),
+        m_freshness_col,
         w.HBox([m_min_rows, m_max_rows, m_tolerance]),
         m_track_schema,
-        add_btn, monitors_output,
+        add_btn,
+        dashui.html(
+            "<div style='font-size:12px;color:#666;margin:6px 0 2px'>Or add every table in "
+            "a schema at once, using the settings above:</div>"
+        ),
+        w.HBox([discover_schema, discover_btn]),
+        discovered_select, add_selected_btn, discover_output,
+        monitors_list.widget,
         dashui.section("Step 2: Run monitors"),
         history_table,
         run_btn,
